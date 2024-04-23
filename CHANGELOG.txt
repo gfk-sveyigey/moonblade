@@ -1,0 +1,10 @@
+Change log
+
+``1.0.2`` 
+Revised all version numbers.
+
+``1.0.1``
+Now it can be installed through pip.
+
+``1.0.0``
+First release.
