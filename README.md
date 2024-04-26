@@ -51,7 +51,7 @@ from moonblade import Router
 To receive events, we need to register asynchronous handlers.
 The handler should be able to accept a dict param.
 ```python
-def example(data: dict):
+async def example(data: dict):
     pass
 
 router = Router()
@@ -68,7 +68,7 @@ Router can also be use as a decorator to register route.
 
 ```python
 @Router.register(route = "/moonblade/start", event_type = "All")
-def example(data: dict):
+async def example(data: dict):
     pass
 ```
 In fact, I recommend using this way. It should be noted that when registering route with a decorator, the handler param should be `None`.
@@ -96,7 +96,7 @@ class C(Node):
         super().__init__()
 
     @Router.register('/moonblade/start')
-    def example(self, data: dict):
+    async def example(self, data: dict):
         pass
 ```
 
@@ -108,7 +108,7 @@ class C:
             getattr(self, key)
 
     @Router.register('/moonblade/start')
-    def example(self, data: dict):
+    async def example(self, data: dict):
         pass
 ```
 

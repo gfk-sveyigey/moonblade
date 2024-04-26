@@ -1,5 +1,11 @@
 Change log
 
+``1.0.4``
+Update: Corrected error examples in README.md.
+
+``1.0.3``
+Fixed: Reported error during pip installation.
+
 ``1.0.2`` 
 Revised all version numbers.
 
