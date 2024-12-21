@@ -1,5 +1,8 @@
 Change log
 
+``1.0.5``
+Update: Follow up on updates to dependency packages.
+
 ``1.0.4``
 Update: Corrected error examples in README.md.
 

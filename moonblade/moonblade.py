@@ -41,7 +41,7 @@ class MoonBlade(object):
         logger.info("Starting MoonBlade.")
         LCU_process = find_LCU_process()
         while not LCU_process:
-            logger.warn("No running LCUxprocess, re-searching...")
+            logger.warning("No running LCUxprocess, re-searching...")
             LCU_process = find_LCU_process()
             await asyncio.sleep(0.5)
         logger.info(f"Found LCUx process.")
@@ -63,16 +63,15 @@ class MoonBlade(object):
 
     async def _start_http(self):
         if self._http_alive:
-            logger.warn("Http is already run.")
+            logger.warning("Http is already run.")
             return
         
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         self._http_client = httpx.AsyncClient(
-            base_url=f"https://127.0.0.1:{self._port}",
-            auth=httpx.BasicAuth("riot", self._token),
-            proxies={"all://":None},
-            headers=headers,
-            verify=False
+            base_url = f"https://127.0.0.1:{self._port}",
+            auth = httpx.BasicAuth("riot", self._token),
+            headers = headers,
+            verify = False
         )
         self._http_alive = True
 
@@ -82,10 +81,10 @@ class MoonBlade(object):
                 if res.status_code == 200:
                     logger.info(f"Connected to LCUx http server.")
                 else:
-                    logger.warn(f"Connected to LCUx http server, but got an invalid response for a known uri. Status: {res.status_code}")
+                    logger.warning(f"Connected to LCUx http server, but got an invalid response for a known uri. Status: {res.status_code}")
                 break
             except httpx.ConnectError:
-                logger.warn(f"Cannot connect to LCUx http server, retrying...")
+                logger.warning(f"Cannot connect to LCUx http server, retrying...")
                 await asyncio.sleep(0.5)
                 
         logger.info("Http is started.")
@@ -93,7 +92,7 @@ class MoonBlade(object):
     
     async def _start_ws(self):
         if self._ws_alive:
-            logger.warn("Ws is already run.")
+            logger.warning("Ws is already run.")
             return
         
         headers = [
@@ -104,10 +103,10 @@ class MoonBlade(object):
         ]
 
         self._ws_client = await websockets.connect(
-            uri=f"wss://127.0.0.1:{self._port}",
-            ssl=ssl._create_unverified_context(),  # if "sll" is set to False, an HTTP protocol handshake that is not supported by the LCU server will be used, so set "ssl" to unverified ssl.
-            extra_headers=headers,
-            max_size=1024*1024*10  # set the max_size enough big to prevent Error 1009.
+            uri = f"wss://127.0.0.1:{self._port}",
+            ssl = ssl._create_unverified_context(),  # if "sll" is set to False, an HTTP protocol handshake that is not supported by the LCU server will be used, so set "ssl" to unverified ssl.
+            additional_headers = headers,
+            max_size = 1024 * 1024 * 10  # set the max_size enough big to prevent Error 1009.
         )
         self._ws_alive = True
 
@@ -128,7 +127,7 @@ class MoonBlade(object):
                     data = json.loads(msg)
                     asyncio.create_task(Router._dispatch(data[2])) # dispatch messages with Router.
         except Exception as e:
-            logger.warn(f"ws loop error: {e}")
+            logger.warning(f"ws loop error: {e}")
             await Router.fake(None, "Update", "/riotclient/pre-shutdown/begin")
         self._ws_alive = False
         return
