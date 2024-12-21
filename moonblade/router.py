@@ -10,28 +10,32 @@ class Node:
     be a subclass of the ``Node``.
     """
     def __init__(cls) -> None:
+        """
+        Traverse properties to ensure that all decorated methods are bound to instances.
+        """
         for key in cls.__dir__():
             getattr(cls, key)
 
 
 class _Handler:
+    """
+    Used to register class methods.
+    """
     def __init__(self, f):
         self.f = f
         self.m = None
         functools.update_wrapper(self, f)
 
     def __get__(self, obj, objtype) -> Callable:
-        if obj is None:
-            self.m = None
-        else:
+        """
+        Bind methods and instances when accessed as class variables.
+        """
+        if obj is not None:
             self.m = MethodType(self.f, obj)
         return self.m
     
     def __call__(self, *args, **kwargs):
-        if self.m is None:
-            return self.f(*args, **kwargs)
-        else:
-            return self.m(*args, **kwargs)
+        return self.f(*args, **kwargs) if self.m is None else self.m(*args, **kwargs)
 
 
 class Router(object):
