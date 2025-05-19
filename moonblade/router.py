@@ -1,5 +1,8 @@
 import asyncio
 import functools
+import threading
+
+from collections import defaultdict
 from types import MethodType
 from typing import Callable, Iterable
 
@@ -12,6 +15,68 @@ class Node:
     def __init__(cls) -> None:
         for key in cls.__dir__():
             getattr(cls, key)
+
+
+class HandlerRegistry:
+    
+    def __init__(self):
+        self._data: dict[str, list[dict[str, Callable | set[str]]]] = defaultdict(list)
+        self._lock = threading.RLock()
+        self.__slots__ = ("_data", "_lock")
+        self.__all__ = ["register_handler", "unregister_handler", "get_handlers"]
+
+    def register_handler(self, route: str, handler: Callable, event_types: Iterable[str] | str) -> None:
+        with self._lock:
+            if isinstance(event_types, str):
+                event_types = {event_types.capitalize()}
+            else:
+                event_types = {i.capitalize() for i in event_types}
+
+            for entry in self._data[route]:
+                if entry["handler"] == handler:
+                    entry["event_types"].update(event_types)
+                    return
+            self._data[route].append({"handler": handler, "event_types": set(event_types)})
+
+    def unregister_handler(self, route: str, handler: Callable | None, event_types: Iterable[str] | str) -> None:
+        with self._lock:
+            if isinstance(event_types, str):
+                event_types = {event_types.capitalize()}
+            else:
+                event_types = {i.capitalize() for i in event_types}
+
+            new_list = []
+            for entry in self._data.get(route, []):
+                if handler is None or entry["handler"] == handler:
+                    entry["event_types"].difference_update(event_types)
+                    if entry["event_types"]:
+                        new_list.append(entry)
+                else:
+                    new_list.append(entry)
+            if new_list:
+                self._data[route] = new_list
+            else:
+                self._data.pop(route, None)
+
+    def get_handlers(self, route: str, event_type: str) -> list[Callable]:
+        with self._lock:
+            handlers = []
+            event_type = event_type.capitalize()
+
+            if route.endswith("/"):
+                for registered_uri, entries in self._data.items():
+                    if registered_uri.startswith(route):
+                        handlers.extend(
+                            entry["handler"]
+                            for entry in entries
+                            if event_type in entry["event_types"]
+                        )
+            else:
+                for entry in self._data.get(route, []):
+                    if event_type in entry["event_types"]:
+                        handlers.append(entry["handler"])
+
+            return handlers
 
 
 class _Handler:
@@ -42,8 +107,9 @@ class Router(object):
     `https://github.com/gfk-sveyigey/Diana`
     """
 
-    registered_uris: dict[str:list] = {}
-    registered_paths: dict[str:list] = {}
+    registered_uris: dict[str: list[dict[str: Callable], dict[str: Iterable[str]]]] = {}
+    registered_paths: dict[str: list] = {}
+    handler_registry = HandlerRegistry()
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -59,7 +125,7 @@ class Router(object):
     def register(
         cls,
         route: str = "/",
-        event_type: str | Iterable[str] = "All",
+        event_types: str | Iterable[str] = "All",
         handler: Callable | None = None,
     ) -> Callable | None:
         """
@@ -80,7 +146,8 @@ class Router(object):
         or an Iterable containing several parameters like `(Create, Update)`.
         :param handler: When explicitly calling the method, handler is needed, 
         and when the function is called as a decorator, handler need to be ``None``.
-        :return: None
+        :return: When explicitly calling the method, return ``None``, and when 
+        the function is called as a decorator, return callable decorator.
 
         Example:
         .. code-block:: python
@@ -96,16 +163,11 @@ class Router(object):
             raise ValueError("Route cannot be empty string.")
         elif not route.startswith('/'):
             raise ValueError("Route must start with \"/\"")
-        
-        if len(event_type) == 0:
-            event_type = "All"
-        if "All" in event_type:
-            event_type = ("Create", "Update", "Delete")
 
-        if isinstance(event_type, str):
-            event_type = (event_type.capitalize(), )
-        else:
-            event_type = [i.capitalize() for i in event_type]
+        if len(event_types) == 0:
+            event_types = "All"
+        if "All" in event_types:
+            event_types = ("Create", "Update", "Delete")
 
         def decorator(handler_: Callable) -> Callable:
             if not asyncio.iscoroutinefunction(handler_):
@@ -114,25 +176,39 @@ class Router(object):
             if not hasattr(handler_, "__func__"):
                 handler_ = _Handler(handler_)
 
-            registered = cls.registered_paths if route.endswith("/") else cls.registered_uris
-
-            if route not in registered.keys():
-                registered[route] =[]
-            event = {"handler": handler_, "event_type": event_type}
-            registered[route].append(event)
+            cls.handler_registry.register_handler(route, handler_, event_types)
             return handler_
         
-        if handler is None:
-            return decorator
-        else:
-            return decorator(handler)
+        return decorator if handler is None else None
+
+
+    @classmethod
+    def unregister(
+        cls,
+        route: str = "/",
+        event_types: str | Iterable[str] = "All",
+        handelr: Callable | None = None,
+    ) -> None:
+        
+        if route == "":
+            raise ValueError("Route cannot be empty string.")
+        elif not route.startswith('/'):
+            raise ValueError("Route must start with \"/\"")
+        
+        if len(event_types) == 0:
+            event_types = "All"
+        if "All" in event_types:
+            event_types = ("Create", "Update", "Delete")
+
+        cls.handler_registry.unregister_handler(route, handelr, event_types)
+
 
     @classmethod
     async def fake(cls, data, event_type: str, uri: str):
         """
         Fake a message published by a server.
 
-        :param data: The data dict or None.
+        :param data: The data that needs to be dispatched.
         :param event_type: The EventType string, possible values: ``Create``, 
         ``Update``, ``Delete``.
         :param uri: The uri string.
@@ -147,6 +223,9 @@ class Router(object):
             )
         """
 
+        event_type = event_type.capitalize()
+        if event_type not in ["Create", "Update", "Delete"]:
+            raise Exception
         data = {"data": data, "eventType": event_type, "uri": uri}
         await Router._dispatch(data)
 
@@ -156,18 +235,9 @@ class Router(object):
         if data is None:
             return
         uri: str = data["uri"]
-        event_type: str = data["eventType"].capitalize()
+        event_type: str = data["eventType"]
 
-        if uri in cls.registered_uris.keys():
-            for event in cls.registered_uris[uri]:
-                if event_type in event["event_type"]:
-                    handler = event["handler"]
-                    await handler(data)
-
-        for path in cls.registered_paths.keys():
-            if uri.startswith(path):
-                for event in cls.registered_paths[path]:
-                    if event_type in event["event_type"]:
-                        handler = event["handler"]
-                        await handler(data)
+        handlers = cls.handler_registry.get_handlers(uri, event_type)
+        handlers = [handler(data) for handler in handlers]
+        asyncio.gather(*handlers)
         return

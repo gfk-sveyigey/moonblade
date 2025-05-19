@@ -39,12 +39,15 @@ class MoonBlade(object):
 
     async def start(self):
         logger.info("Starting MoonBlade.")
-        LCU_process = find_LCU_process()
-        while not LCU_process:
-            logger.warning("No running LCUxprocess, re-searching...")
+
+        while True:
             LCU_process = find_LCU_process()
-            await asyncio.sleep(0.5)
-        logger.info(f"Found LCUx process.")
+            if LCU_process is None:
+                logger.warning("No running LCUxprocess, re-searching...")
+                await asyncio.sleep(0.5)
+            else:
+                logger.info(f"Found LCUx process.")
+                break
 
         LCU_args = parse_LCU_cmdline(LCU_process.cmdline())
         self._pid = LCU_process.pid
@@ -56,7 +59,7 @@ class MoonBlade(object):
         await self._start_ws()
 
         #  Fake subscription message to prompt MoonBlade is fully started.
-        await Router.fake(None, "Update", "/moonblade/start")
+        await Router.fake(None, "Create", "/moonblade")
 
         logger.info("MoonBlade is fully started.")
         return
@@ -125,10 +128,12 @@ class MoonBlade(object):
                     logger.info("Got websocket message containing no data.")
                 else:
                     data = json.loads(msg)
+                    if data[2]["uri"] == "/riotclient/pre-shutdown/begin":
+                        raise Exception
                     asyncio.create_task(Router._dispatch(data[2])) # dispatch messages with Router.
         except Exception as e:
-            logger.warning(f"ws loop error: {e}")
-            await Router.fake(None, "Update", "/riotclient/pre-shutdown/begin")
+            logger.warning(f"Ws loop error: {e}")
+            await Router.fake(None, "Delete", "/moonblade")
         self._ws_alive = False
         return
     

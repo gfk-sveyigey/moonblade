@@ -1,5 +1,8 @@
 Change log
 
+``1.1.1``
+Changed: Modify registry data structure; Change the URI of '/morenblade/start' to '/morenblade'; Improve the invocation of the '/monblade' event.
+
 ``1.0.5``
 Update: Follow up on updates to dependency packages.
 

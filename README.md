@@ -1,5 +1,5 @@
 # moonblade
-A Python 3 asynchronous library committed to communicating with LOL server through the LCU API in a simple and flexible way.
+An asynchronous Python 3 library designed to communicate with the LOL server via the LCU API in a simple and flexible way.
 
 ## Setup
 
@@ -9,28 +9,28 @@ pip install moonblade
 
 ## Usage
 
-moonblade consists of `MoonBlade`, `Router`, and `Node`.
+`moonblade` consists of three core components: `MoonBlade`, `Router`, and `Node`.
 
 ### MoonBlade
 
-`MoonBlade` is a connector to connect to LOL server.
-At the beginning, it is necessary to import the class.
+`MoonBlade` is a connector for establishing communication with the LOL server.
+Before using it, you need to import the class:
 ```python
 from moonblade import MoonBlade
 ```
 
-To communicating with LOL server, you need to start MoonBlade first.
+To start communication with the LOL server, create an instance of `MoonBlade` and call `start()`:
 ```python
 mb = MoonBlade()
-mb.start()
+await mb.start()
 ```
 
-Similarly, when stopping the use of MoonBlade, it is necessary to stop MoonBlade.
+To stop communication:
 ```python
-mb.stop()
+await mb.stop()
 ```
 
-MoonBlade is alse support context managers.
+`MoonBlade` also supports use as an asynchronous context manager:
 ```python
 async with MoonBlade() as mb:
     ...
@@ -40,79 +40,101 @@ async with MoonBlade() as mb:
 
 ### Router
 
-`Router` is used to distribute events received from the LOL server.
-Before use, it is also necessary to import the class.
+`Router` is responsible for dispatching events received from the LOL server.
+Before using it, import the class:
 ```python
 from moonblade import Router
 ```
 
 #### register
+To receive events, you need to register asynchronous handlers.
+The `register` function accepts three parameters: `route`, `event_types`, and `handler`.
 
-To receive events, we need to register asynchronous handlers.
-The handler should be able to accept a dict param.
-```python
+##### route
+A route can be a URI or a path.
+If the route ends with a `"/"`, it is treated as a path; otherwise, as a URI.
+Additionally, `moonblade` exposes the URI `"/moonblade"`, which dispatches:
+A `Create` event when a connection to the LOL service is successfully established;
+A `Delete` event when the connection is lost;
+No `Update` event is dispatched for this URI.
+
+##### event_types
+Accepts one of the strings `Create`, `Update`, `Delete`, or `All`, or an iterable containing any combination of these strings.
+Defaults to "All". Case-insensitive.
+
+##### handler
+The handler must be an asynchronous function that accepts a single `dict`.
+``` python
 async def example(data: dict):
     pass
+```
 
+You can create a `Router` instance and register a route:
+```python
 router = Router()
-router.register(route = "/moonblade/start", event_type = "All", handler = example)
+router.register(route = "/moonblade", event_types = "Create", handler = example)
 ```
-Note that Router is a singleton class that points to the same Router no matter how many times it is instantiated.
+Note: `Router` is a singleton. All instances refer to the same underlying object.
 
-Router can also be used without instantiation.
+You can also register without instantiating:
 ```python
-Router.register(route = "/moonblade/start", event_type = "All", handler = example)
+Router.register(route = "/moonblade", event_types = ("Create",), handler = example)
 ```
 
-Router can also be use as a decorator to register route.
-
+Or use the decorator style (recommended).
+When using the decorator, you **must omit** the `handler` parameter:
 ```python
-@Router.register(route = "/moonblade/start", event_type = "All")
+@Router.register(route = "/moonblade", event_types = ["Create"])
 async def example(data: dict):
     pass
 ```
-In fact, I recommend using this way. It should be noted that when registering route with a decorator, the handler param should be `None`.
 
-We can also register asynchronous methods, which will be introduced later.
+`Router` also supports registering asynchronous class methods, described below.
 
-##### event_type
-Including `Create`, `Update`, `Delete` and `All`. Default to `All` and case-insensitive.
+#### unregister
+You can `unregister` a previously registered `handler`:
+``` python
+router.unregister(route = "/moonblade", event_types = {"Create"}, handler = example)
+```
+If `handler` is set to `None`, all handlers for the specified route and event types will be unregistered.
 
 #### fake
 
-An asynchronous method to fake an event from the server.
+You can simulate events from the server using the asynchronous `fake` method:
 ```python
-await Router.fake(None, 'Update', '/moonblade/start')
+await Router.fake(data = None, event_type = 'Create', uri = '/moonblade')
+await Router.fake(data = None, event_type = 'Delete', uri = '/moonblade')
 ```
 
 ### Node
 
-Router can register asynchronous methods. In this situation, the class witch the method in should be a subclass of `Node`.
+You can also register asynchronous class methods as event handlers.
+In this case, the class must inherit from `Node`:
 ```python
-class C(Node):
+class N(Node):
 
     def __init__(self) -> None:
         ...
         super().__init__()
 
-    @Router.register('/moonblade/start')
-    async def example(self, data: dict):
+    @Router.register('/moonblade', 'Create')
+    async def moonblade_start(self, data: dict):
         pass
 ```
 
-Also, we can add `for key in self.__dir__(): getattr(self, key)` to the end of the `__init__` method to achieve the same effect.
+Alternatively, if not inheriting from `Node`, you can trigger handler registration by iterating over `__dir__()`:
 ```python
-class C:
+class N:
     def __init__(self) -> None:
         for key in self.__dir__():
             getattr(self, key)
 
-    @Router.register('/moonblade/start')
-    async def example(self, data: dict):
+    @Router.register('/moonblade', 'Delete')
+    async def moonblade_stop(self, data: dict):
         pass
 ```
 
 ## Application
 
-For more detailed usage instructions, reference the library [`Diana`](https://github.com/gfk-sveyigey/Diana) witch is based on moonblade.
+For more detailed usage instructions, reference the library [`Diana`](https://github.com/gfk-sveyigey/Diana) which is built on top of `moonblade`.
 
