@@ -179,8 +179,11 @@ class Router(object):
             cls.handler_registry.register_handler(route, handler_, event_types)
             return handler_
         
-        return decorator if handler is None else None
-
+        if handler is None:
+            return decorator
+        else:
+            decorator(handler)
+            return None
 
     @classmethod
     def unregister(
