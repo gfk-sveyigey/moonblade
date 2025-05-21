@@ -8,8 +8,8 @@ long_description = (path / "README.md").read_text(encoding="utf-8")
 
 setup(
     name = "moonblade",
-    version = "1.1.2",
-    description = "A Python 3 asynchronous library committed to communicating with LOL server through the LCU API in a simple and flexible way .",
+    version = "1.1.3",
+    description = "An asynchronous Python 3 library designed to communicate with the LOL server via the LCU API in a simple and flexible way.",
     long_description = long_description,
     long_description_content_type = "text/markdown",
     url = "https://github.com/gfk-sveyigey/moonblade",

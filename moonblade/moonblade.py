@@ -73,6 +73,7 @@ class MoonBlade(object):
         self._http_client = httpx.AsyncClient(
             base_url = f"https://127.0.0.1:{self._port}",
             auth = httpx.BasicAuth("riot", self._token),
+            limits = httpx.Limits(max_keepalive_connections = 0),
             headers = headers,
             verify = False
         )
@@ -142,7 +143,7 @@ class MoonBlade(object):
 
         if kwargs.get("data", None):
             kwargs["data"] = json.dumps(kwargs["data"])
-        return await self._http_client.request(method, uri, **kwargs)
+        return await asyncio.create_task(self._http_client.request(method, uri, **kwargs))
 
     async def stop(self):
         await self._stop_http()

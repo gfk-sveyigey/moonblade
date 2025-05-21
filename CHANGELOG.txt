@@ -1,19 +1,33 @@
 Change log
 
+``1.1.3``
+Fixed:
+    Unable to dispatch events to registered paths.
+    Reusing connections resulted in unexpected HTTP access errors.
+Changed:
+    Change the `request` method from a coroutine call to a create task call.
+
 ``1.1.2``
-Fixed: Invalid registration function after instantiation.
+Fixed:
+    Invalid registration function after instantiation.
 
 ``1.1.1``
-Changed: Modify registry data structure; Change the URI of '/morenblade/start' to '/morenblade'; Improve the invocation of the '/monblade' event.
+Changed:
+    Modify registry data structure;
+    Change the URI of '/morenblade/start' to '/morenblade';
+    Improve the invocation of the '/monblade' event.
 
 ``1.0.5``
-Update: Follow up on updates to dependency packages.
+Update:
+    Follow up on updates to dependency packages.
 
 ``1.0.4``
-Update: Corrected error examples in README.md.
+Update:
+    Corrected error examples in README.md.
 
 ``1.0.3``
-Fixed: Reported error during pip installation.
+Fixed:
+    Reported error during pip installation.
 
 ``1.0.2`` 
 Revised all version numbers.

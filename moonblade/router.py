@@ -63,18 +63,19 @@ class HandlerRegistry:
             handlers = []
             event_type = event_type.capitalize()
 
-            if route.endswith("/"):
-                for registered_uri, entries in self._data.items():
-                    if registered_uri.startswith(route):
-                        handlers.extend(
-                            entry["handler"]
-                            for entry in entries
-                            if event_type in entry["event_types"]
-                        )
-            else:
-                for entry in self._data.get(route, []):
-                    if event_type in entry["event_types"]:
-                        handlers.append(entry["handler"])
+            for registered_uri, entries in self._data.items():
+                route_matched = (
+                    route.startswith(registered_uri) 
+                    if registered_uri.endswith("/") 
+                    else route == registered_uri
+                )
+
+                if route_matched:
+                    handlers.extend(
+                        entry["handler"] 
+                        for entry in entries 
+                        if event_type in entry["event_types"]
+                    )
 
             return handlers
 
