@@ -19,7 +19,7 @@ __all__ = [
 
 class MoonBlade(object):
     """
-    A Python 3 asynchronous library committed to communicating with LOL server through the LCU API in a simple and flexible way .
+    An asynchronous Python 3 library designed to communicate with the LOL server via the LCU API in a simple and flexible way.
     """
 
     __all__ = ["start", "stop", "request"]
@@ -143,7 +143,10 @@ class MoonBlade(object):
 
         if kwargs.get("data", None):
             kwargs["data"] = json.dumps(kwargs["data"])
-        return await asyncio.create_task(self._http_client.request(method, uri, **kwargs))
+        res = await asyncio.create_task(self._http_client.request(method, uri, **kwargs))
+        print("request", method, uri, res.status_code, res.text)
+        return res
+        # return await self._http_client.request(method, uri, **kwargs)
 
     async def stop(self):
         await self._stop_http()
